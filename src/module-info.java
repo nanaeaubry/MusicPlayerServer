@@ -1,9 +1,0 @@
-/**
- * 
- */
-/**
- * @author nanaeaubry
- *
- */
-module musicPlayerServer {
-}
