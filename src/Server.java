@@ -18,13 +18,13 @@ public class Server  {
 		//Create the services
 		Receiver receiver = new Receiver(connection);
 		Sender sender = new Sender(connection);
-		ProcessManager pManager = new ProcessManager();
+		ProcessManager processManager = new ProcessManager();
 		Cleaner cleaner = new Cleaner(5);	//clean each 5 minutes
 		
 		//Create the services		
 		Thread taskReceiver = new Thread(receiver);
 		Thread taskSender = new Thread(sender);
-		Thread taskPManager = new Thread(pManager);
+		Thread taskPManager = new Thread(processManager);
 		Thread taskCleaner = new Thread(cleaner);
 		
 		//Run the services as threads		
@@ -78,11 +78,11 @@ public class Server  {
 								}									
 								break;
 								
-					case '3':	if (pManager.isRunning())
-									pManager.stop();
+					case '3':	if (processManager.isRunning())
+									processManager.stop();
 								else
 								{
-									taskPManager = new Thread(pManager);									
+									taskPManager = new Thread(processManager);									
 									taskPManager.start();
 								}
 								break;
@@ -98,13 +98,13 @@ public class Server  {
 								
 					case '5':	//Recover RPCs from disk
 								//In case server crashed before
-								pManager.recoverFromDisk();
+								processManager.recoverFromDisk();
 								break;
 								
-					case '6':	if (pManager.areLogsOn())
-									pManager.turnLogsOff();
+					case '6':	if (processManager.areLogsOn())
+									processManager.turnLogsOff();
 								else
-									pManager.turnLogsOn();
+									processManager.turnLogsOn();
 								break;
 				}				
 			}
@@ -113,7 +113,7 @@ public class Server  {
 		
 		//close resources
 		keyboard.close();		
-		pManager.stop();		
+		processManager.stop();		
 		receiver.stop();
 		sender.stop();		
 		cleaner.stop();
