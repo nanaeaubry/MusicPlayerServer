@@ -7,22 +7,24 @@ import java.util.ArrayList;
  * @author rTunes team
  *
  */
-public class ProcessManager implements Runnable {
+public class RPCManager implements Runnable {
 
 	// Attributes
 	// --------------------
 	private static ArrayList<RPCDescriptor> rpcList = null; // descriptors received
 	private boolean running; // True when running
 	private boolean logsOn; // False by default
+	private Dispatcher dispatcher;
 
 	// Methods
 	// --------------------
 
 	// Initialize the manager
-	public ProcessManager() {
-		running = false;
-		logsOn = false;
-
+	public RPCManager(Dispatcher dispatcher) {
+		this.running = false;
+		this.logsOn = false;
+		this.dispatcher = dispatcher;
+		
 		if (rpcList == null)
 			rpcList = new ArrayList<RPCDescriptor>();
 	}
@@ -115,38 +117,46 @@ public class ProcessManager implements Runnable {
 			try { // Sleep for a millisecond
 				Thread.sleep(1);
 
-				// If the queue has an element it is executed
-				if (!Receiver.emptyQueue()) {
-					// Get a datagram from the queue
-					DatagramPacket datagram = Receiver.pop();
-					RPCDescriptor rpc = new RPCDescriptor();
+				// Get datagram from receiver, if null then go back to waiting
+				DatagramPacket datagram = Receiver.pop();
+				if (datagram == null) {
+					continue;
+				}
 
-					// Try to get the RPC from the datagram
-					if (rpc.unmarshall(datagram)) {
-						// DUPLICATE FILTERING
-						// Discarding duplicate messages
-						if (!rpcList.contains(rpc)) {
-							// Attempt to send a previous execution if exists
-							// if (!atMostOnce(rpc))
-							{
-								rpcList.add(rpc);
-								Thread task = new Thread(new Process(rpc, logsOn));
-								task.start();
+				// Try to get the RPC from the datagram
+				RPCDescriptor rpc = new RPCDescriptor();
+				if (rpc.unmarshall(datagram)) {
 
-								// keep a log of the incoming RPCs
-								if (logsOn)
-									rpc.save(Session.logsInRPC);
-							}
-						} else {
-							System.out.println("Process manager message: a duplicated RPC was received");
-							System.out.println(
-									"Discarted: " + rpc.getOperationId() + " arguments: " + rpc.getArguments());
+					// Discarding duplicate messages
+					if (!rpcList.contains(rpc)) {
+						// Attempt to send a previous execution if exists
+						// if (!atMostOnce(rpc))
+						{
+							// Keep in the list to avoid duplicate
+							rpcList.add(rpc);
+							
+							// Dispatch the RPC Descriptor arguments to Dispatcher
+							Thread task = new Thread() {
+								@Override
+								public void run() {
+									String response = dispatcher(rpc.getArguments());
+								}
+							};
+//							Thread task = new Thread(new Process(rpc, logsOn));
+							task.start();
+
+							// keep a log of the incoming RPCs
+							if (logsOn)
+								rpc.save(Session.logsInRPC);
 						}
 					} else {
-						System.out.println("Process manager message: a invalid RPC was received");
-						System.out.println("Datagram: " + new String(datagram.getData()));
+						System.out.println("Process manager message: a duplicated RPC was received");
+						System.out.println("Discarted: " + rpc.getOperationId() + " arguments: " + rpc.getArguments());
 					}
-				} // End if
+				} else {
+					System.out.println("Process manager message: a invalid RPC was received");
+					System.out.println("Datagram: " + new String(datagram.getData()));
+				}
 
 			} catch (InterruptedException e) {
 				e.printStackTrace();

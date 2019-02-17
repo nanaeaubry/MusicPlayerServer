@@ -18,19 +18,19 @@ public class Server  {
 		//Create the services
 		Receiver receiver = new Receiver(connection);
 		Sender sender = new Sender(connection);
-		ProcessManager processManager = new ProcessManager();
+		RPCManager rpcManager = new RPCManager();
 		Cleaner cleaner = new Cleaner(5);	//clean each 5 minutes
 		
 		//Create the services		
 		Thread taskReceiver = new Thread(receiver);
 		Thread taskSender = new Thread(sender);
-		Thread taskPManager = new Thread(processManager);
+		Thread taskRPCManager = new Thread(rpcManager);
 		Thread taskCleaner = new Thread(cleaner);
 		
 		//Run the services as threads		
 		taskReceiver.start();
 		taskSender.start();
-		taskPManager.start();
+		taskRPCManager.start();
 		taskCleaner.start();
 								
         //Show a Menu for interaction with the user
@@ -43,7 +43,7 @@ public class Server  {
 			System.out.println("********** Menu Server *************");
 			System.out.println("1. Stop/Start Receiver.             ");			
 			System.out.println("2. Stop/Start Sender.               ");
-			System.out.println("3. Stop/Start Process Manager.      ");
+			System.out.println("3. Stop/Start RPC Manager.      ");
 			System.out.println("4. Stop/Start Cleaner.              ");			
 			System.out.println("5. Recover & execute RPCs from disk ");			
 			System.out.println("6. On/Off logs                      ");			
@@ -78,12 +78,12 @@ public class Server  {
 								}									
 								break;
 								
-					case '3':	if (processManager.isRunning())
-									processManager.stop();
+					case '3':	if (rpcManager.isRunning())
+									rpcManager.stop();
 								else
 								{
-									taskPManager = new Thread(processManager);									
-									taskPManager.start();
+									taskRPCManager = new Thread(rpcManager);									
+									taskRPCManager.start();
 								}
 								break;
 								
@@ -98,13 +98,13 @@ public class Server  {
 								
 					case '5':	//Recover RPCs from disk
 								//In case server crashed before
-								processManager.recoverFromDisk();
+								rpcManager.recoverFromDisk();
 								break;
 								
-					case '6':	if (processManager.areLogsOn())
-									processManager.turnLogsOff();
+					case '6':	if (rpcManager.areLogsOn())
+									rpcManager.turnLogsOff();
 								else
-									processManager.turnLogsOn();
+									rpcManager.turnLogsOn();
 								break;
 				}				
 			}
@@ -113,7 +113,7 @@ public class Server  {
 		
 		//close resources
 		keyboard.close();		
-		processManager.stop();		
+		rpcManager.stop();		
 		receiver.stop();
 		sender.stop();		
 		cleaner.stop();

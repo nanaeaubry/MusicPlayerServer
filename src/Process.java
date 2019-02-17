@@ -150,7 +150,7 @@ public class Process implements Runnable {
 		//Add to the sender's queue
 		RPCDescriptor reply = new RPCDescriptor(sourceAddress(), sourcePort(), RPCDescriptor.REPLY, rpc.getRequestId(), rpc.getUserId(), op , parameter); 
 		Sender.insert(reply);
-		ProcessManager.removeRPC(rpc);
+		RPCManager.removeRPC(rpc);
 		
 		//Update logs
 		if (logsOn)
@@ -177,7 +177,7 @@ public class Process implements Runnable {
 		//Add to the sender's queue
 		RPCDescriptor reply = new RPCDescriptor(sourceAddress(), sourcePort(), RPCDescriptor.REPLY, rpc.getRequestId(), rpc.getUserId(), op, rpc.getArguments()); 
 		Sender.insert(reply);
-		ProcessManager.removeRPC(rpc);
+		RPCManager.removeRPC(rpc);
 		
 		//Update logs
 		if (logsOn)
@@ -205,7 +205,7 @@ public class Process implements Runnable {
 		//Add to the sender's queue
 		RPCDescriptor reply = new RPCDescriptor(sourceAddress(), sourcePort(), RPCDescriptor.REPLY, rpc.getRequestId(), rpc.getUserId(), op, rpc.getArguments()); 
 		Sender.insert(reply);								
-		ProcessManager.removeRPC(rpc);
+		RPCManager.removeRPC(rpc);
 		
 		//Update logs
 		if (logsOn)
@@ -243,7 +243,7 @@ public class Process implements Runnable {
 		//Add to the sender's queue
 		RPCDescriptor reply = new RPCDescriptor(sourceAddress(), sourcePort(), RPCDescriptor.REPLY, rpc.getRequestId(), rpc.getUserId(), op, rpc.getArguments());
 		Sender.insert(reply);
-		ProcessManager.removeRPC(rpc);
+		RPCManager.removeRPC(rpc);
 		
 		//Update logs
 		if (logsOn)
@@ -281,7 +281,7 @@ public class Process implements Runnable {
 		//Add to the sender's queue
 		RPCDescriptor reply = new RPCDescriptor(sourceAddress(), sourcePort(), RPCDescriptor.REPLY, rpc.getRequestId(), rpc.getUserId(), op, rpc.getArguments()); 
 		Sender.insert(reply);
-		ProcessManager.removeRPC(rpc);
+		RPCManager.removeRPC(rpc);
 		
 		//Update logs
 		if (logsOn)
@@ -324,7 +324,7 @@ public class Process implements Runnable {
 		//Add to the sender's queue
 		RPCDescriptor reply = new RPCDescriptor(sourceAddress(), sourcePort(), RPCDescriptor.REPLY, rpc.getRequestId(), rpc.getUserId(), op, parameter); 
 		Sender.insert(reply);
-		ProcessManager.removeRPC(rpc);
+		RPCManager.removeRPC(rpc);
 		
 		//Update logs
 		if (logsOn)
@@ -360,7 +360,7 @@ public class Process implements Runnable {
 		//Add to the sender's queue
 		RPCDescriptor reply = new RPCDescriptor(sourceAddress(), sourcePort(), RPCDescriptor.REPLY, rpc.getRequestId(), rpc.getUserId(), op, parameter);
 		Sender.insert(reply);								
-		ProcessManager.removeRPC(rpc);
+		RPCManager.removeRPC(rpc);
 		
 		//Update logs
 		if (logsOn)
@@ -416,7 +416,7 @@ public class Process implements Runnable {
 		//Add to the sender's queue
 		RPCDescriptor reply = new RPCDescriptor(sourceAddress(), sourcePort(), RPCDescriptor.REPLY, rpc.getRequestId(), rpc.getUserId(), op, arguments);
 		Sender.insert(reply);
-		ProcessManager.removeRPC(rpc);
+		RPCManager.removeRPC(rpc);
 		
 		//Update logs
 		if (logsOn)
