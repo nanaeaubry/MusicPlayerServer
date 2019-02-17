@@ -11,14 +11,6 @@ public class Server {
 
 	// Main Program
 	public static void main(String[] args) {
-
-		try {
-			String currentDirectory = new File(".").getCanonicalPath();
-			System.out.println(currentDirectory);
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
 		
 		// Open a connection
 		UDPConnection connection = new UDPConnection();

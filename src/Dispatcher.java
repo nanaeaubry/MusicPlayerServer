@@ -41,7 +41,7 @@ public class Dispatcher implements DispatcherInterface {
 			Method[] methods = service.getClass().getMethods();
 
 			// Find the method requested
-			String methodName = request.get("remoteMethod").getAsString();
+			String methodName = request.get("methodName").getAsString();
 			Method method = null;
 			for (int i = 0; i < methods.length && method == null; i++) {
 				if (methods[i].getName().equals(methodName))
@@ -71,7 +71,7 @@ public class Dispatcher implements DispatcherInterface {
 				case "java.lang.Integer":
 					parameter[i] = Integer.parseInt(strParam[i]);
 					break;
-				case "String":
+				case "java.lang.String":
 					parameter[i] = new String(strParam[i]);
 					break;
 				}
