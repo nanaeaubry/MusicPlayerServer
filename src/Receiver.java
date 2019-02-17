@@ -1,6 +1,7 @@
 import java.net.DatagramPacket;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 
 /**
  * Class Receiver Opens a connection port and waits for datagrams. It runs in a
@@ -14,7 +15,7 @@ public class Receiver implements Runnable {
 
 	// Attributes
 	// --------------------
-	private static ArrayList<DatagramPacket> queue = null; // A global FIFO buffer for coming datagrams
+	private static List<DatagramPacket> queue = null; // A global FIFO buffer for coming datagrams
 	private boolean running; // True when running
 	UDPConnection connection; // Connection binded to the port
 
@@ -27,7 +28,7 @@ public class Receiver implements Runnable {
 		this.connection = conn;
 
 		if (queue == null)
-			queue = (ArrayList<DatagramPacket>) Collections.synchronizedList(new ArrayList<DatagramPacket>());
+			queue = Collections.synchronizedList(new ArrayList<DatagramPacket>());
 	}
 
 	// Returns True if the thread is running

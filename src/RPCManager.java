@@ -1,6 +1,7 @@
 import java.net.DatagramPacket;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 
 /**
  * 
@@ -11,7 +12,7 @@ public class RPCManager implements Runnable {
 
 	// Attributes
 	// --------------------
-	private static ArrayList<RPCDescriptor> rpcList = null; // descriptors received
+	private static List<RPCDescriptor> rpcList = null; // descriptors received
 	private boolean running; // True when running
 	private Dispatcher dispatcher;
 
@@ -24,7 +25,7 @@ public class RPCManager implements Runnable {
 		this.dispatcher = dispatcher;
 
 		if (rpcList == null)
-			rpcList = (ArrayList<RPCDescriptor>) Collections.synchronizedList(new ArrayList<RPCDescriptor>());
+			rpcList = Collections.synchronizedList(new ArrayList<RPCDescriptor>());
 	}
 
 	// Returns True if the thread is running

@@ -1,5 +1,6 @@
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 
 /**
  * 
@@ -10,7 +11,7 @@ public class Sender implements Runnable {
 
 	// Attributes
 	// --------------------
-	private static ArrayList<RPCDescriptor> queue = null; // A global FIFO buffer for sending datagrams
+	private static List<RPCDescriptor> queue = null; // A global FIFO buffer for sending datagrams
 	private boolean running; // True when running
 	UDPConnection connection; // Connection binded to the port
 
@@ -23,7 +24,7 @@ public class Sender implements Runnable {
 		this.connection = conn;
 
 		if (queue == null)
-			queue = (ArrayList<RPCDescriptor>) Collections.synchronizedList(new ArrayList<RPCDescriptor>());
+			queue = Collections.synchronizedList(new ArrayList<RPCDescriptor>());
 	}
 
 	// Returns True if the thread is running

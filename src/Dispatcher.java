@@ -16,10 +16,10 @@ import java.util.*;
 import java.lang.reflect.*;
 
 public class Dispatcher implements DispatcherInterface {
-	HashMap<String, Object> ListOfObjects;
+	HashMap<String, Object> listOfServices;
 
 	public Dispatcher() {
-		ListOfObjects = new HashMap<String, Object>();
+		listOfServices = new HashMap<String, Object>();
 	}
 
 	/*
@@ -33,7 +33,7 @@ public class Dispatcher implements DispatcherInterface {
 		JsonObject response = new JsonObject();
 
 		// Get service for the request
-		Object service = ListOfObjects.get(request.get("objectName").getAsString());
+		Object service = listOfServices.get(request.get("serviceName").getAsString());
 
 		try {
 
@@ -109,8 +109,8 @@ public class Dispatcher implements DispatcherInterface {
 	 * @objectName: It is the main class that contains the remote methods each
 	 * object can contain several remote methods
 	 */
-	public void registerObject(Object remoteMethod, String objectName) {
-		ListOfObjects.put(objectName, remoteMethod);
+	public void registerService(String serviceName, Object service) {
+		listOfServices.put(serviceName, service);
 	}
 
 	/*

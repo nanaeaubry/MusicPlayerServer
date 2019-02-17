@@ -1,4 +1,6 @@
 
+import java.io.File;
+import java.io.IOException;
 import java.util.Scanner;
 
 public class Server {
@@ -10,6 +12,14 @@ public class Server {
 	// Main Program
 	public static void main(String[] args) {
 
+		try {
+			String currentDirectory = new File(".").getCanonicalPath();
+			System.out.println(currentDirectory);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
 		// Open a connection
 		UDPConnection connection = new UDPConnection();
 		connection.open(SERVER_PORT, MAX_DATAGRAM_SIZE);
@@ -17,6 +27,7 @@ public class Server {
 
 		// Dispatcher system
 		Dispatcher dispatcher = new Dispatcher();
+		dispatcher.registerService("LoginService", new LoginService());
 
 		// Create the services
 		Receiver receiver = new Receiver(connection);
