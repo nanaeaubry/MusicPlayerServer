@@ -38,18 +38,16 @@ public class Receiver implements Runnable {
 	// stop the service
 	public void stop() {
 		running = false;
-		RPCDescriptor rpc = new RPCDescriptor("", 0, 0, 0, 0, 0, "{Stop receiver}");
-		connection.sendData(rpc.marshall(), connection.getLocalAddress(), connection.getLocalPort());
 	}
 
 	// Pop a datagram from the FIFO queue
 	public static DatagramPacket pop() {
 		synchronized (queue) {
-			DatagramPacket datagram = null;
-			if (queue.size() > 0)
-				datagram = queue.remove(0);
+			if (queue.size() > 0) {
+				return queue.remove(0);
+			}
 
-			return datagram;
+			return null;
 		}
 	}
 

@@ -8,10 +8,12 @@
 */
 
 import java.util.HashMap;
+
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+
 import java.util.*;
 import java.lang.reflect.*;
-import org.json.JSONException;
-import org.json.JSONObject;
 
 public class Dispatcher implements DispatcherInterface {
 	HashMap<String, Object> ListOfObjects;
@@ -26,87 +28,77 @@ public class Dispatcher implements DispatcherInterface {
 	 * @param request: Request: it is a Json file { "remoteMethod":"getSongChunk",
 	 * "objectName":"SongServices", "param": { "song":490183, "fragment":2 } }
 	 */
-	public String dispatch(String request) {
+	public JsonObject dispatch(JsonObject request) {
 
-		JSONObject jsonReturn = new JSONObject();
+		JsonObject response = new JsonObject();
+
+		// Get service for the request
+		Object service = ListOfObjects.get(request.get("objectName").getAsString());
+
 		try {
-			JSONObject jsonRequest = new JSONObject(request);
 
-			// Get service for the request
-			Object service = ListOfObjects.get(jsonRequest.getString("objectName"));
+			// Get the list of methods on the service
+			Method[] methods = service.getClass().getMethods();
 
-			try {
+			// Find the method requested
+			String methodName = request.get("remoteMethod").getAsString();
+			Method method = null;
+			for (int i = 0; i < methods.length && method == null; i++) {
+				if (methods[i].getName().equals(methodName))
+					method = methods[i];
+			}
+			if (method == null) {
+				response.addProperty("error", "Method does not exist");
+				return response;
+			}
 
-				// Get the list of methods on the service
-				Method[] methods = service.getClass().getMethods();
+			// Read params as String
+			Class<?>[] types = method.getParameterTypes();
+			String[] strParam = new String[types.length];
+			JsonObject jsonParam = request.get("param").getAsJsonObject();
+			int j = 0;
+			for (Map.Entry<String, JsonElement> entry : jsonParam.entrySet()) {
+				strParam[j++] = entry.getValue().getAsString();
+			}
 
-				// Find the method requested
-				String methodName = jsonRequest.getString("remoteMethod");
-				Method method = null;
-				for (int i = 0; i < methods.length && method == null; i++) {
-					if (methods[i].getName().equals(methodName))
-						method = methods[i];
-				}
-				if (method == null) {
-					jsonReturn.put("error", "Method does not exist");
-					return jsonReturn.toString();
-				}
-				
-				// Read params as String
-				Class<?>[] types = method.getParameterTypes();
-				String[] strParam = new String[types.length];
-				JSONObject jsonParam = jsonRequest.getJSONObject("param");
-				@SuppressWarnings("unchecked")
-				Iterator<String> keys = jsonParam.keys();
-				int j = 0;
-				while (keys.hasNext()) {
-					String key = keys.next();
-					if (jsonParam.get(key) instanceof JSONObject) {
-						strParam[j++] = jsonParam.getString(key);
-					}
-				}
-
-				// Convert string params to the correct type
-				Object[] parameter = new Object[types.length];
-				for (int i = 0; i < types.length; i++) {
-					switch (types[i].getCanonicalName()) {
-					case "java.lang.Long":
-						parameter[i] = Long.parseLong(strParam[i]);
-						break;
-					case "java.lang.Integer":
-						parameter[i] = Integer.parseInt(strParam[i]);
-						break;
-					case "String":
-						parameter[i] = new String(strParam[i]);
-						break;
-					}
-				}
-				
-				// Invoke the method
-				Class<?> returnType = method.getReturnType();
-				String ret = "";
-				switch (returnType.getCanonicalName()) {
+			// Convert string params to the correct type
+			Object[] parameter = new Object[types.length];
+			for (int i = 0; i < types.length; i++) {
+				switch (types[i].getCanonicalName()) {
 				case "java.lang.Long":
-					ret = method.invoke(service, parameter).toString();
+					parameter[i] = Long.parseLong(strParam[i]);
 					break;
 				case "java.lang.Integer":
-					ret = method.invoke(service, parameter).toString();
+					parameter[i] = Integer.parseInt(strParam[i]);
 					break;
-				case "java.lang.String":
-					ret = (String) method.invoke(service, parameter);
+				case "String":
+					parameter[i] = new String(strParam[i]);
 					break;
 				}
-				jsonReturn.put("ret", ret);
-
-			} catch (InvocationTargetException | IllegalAccessException e) {
-				jsonReturn.put("error", "Error on " + jsonRequest.getString("objectName") + "."
-						+ jsonRequest.getString("remoteMethod"));
 			}
-		} catch (JSONException e) {
 
+			// Invoke the method
+			Class<?> returnType = method.getReturnType();
+			String ret = "";
+			switch (returnType.getCanonicalName()) {
+			case "java.lang.Long":
+				ret = method.invoke(service, parameter).toString();
+				break;
+			case "java.lang.Integer":
+				ret = method.invoke(service, parameter).toString();
+				break;
+			case "java.lang.String":
+				ret = (String) method.invoke(service, parameter);
+				break;
+			}
+			response.addProperty("ret", ret);
+
+		} catch (InvocationTargetException | IllegalAccessException e) {
+			response.addProperty("error",
+					"Error on " + request.get("objectName").getAsString() + "." + request.get("remoteMethod").getAsString());
 		}
 
-		return jsonReturn.toString();
+		return response;
 	}
 
 	/*

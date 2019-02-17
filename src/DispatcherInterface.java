@@ -1,4 +1,4 @@
-
+import com.google.gson.JsonObject;
 
 public interface DispatcherInterface {
 /*
@@ -16,7 +16,7 @@ public interface DispatcherInterface {
 * To execute a method you can use 
 * ListOfObjects["SongServices"].class.getMethod("getSongChunk").invoke(songId, 2);
 */
-    public String dispatch(String request);
+    public JsonObject dispatch(JsonObject request);
 /*
 * Register the objects and methods that the dispatcher supports.
 * It inserts remoteObject into a hash map of objects. For example,
