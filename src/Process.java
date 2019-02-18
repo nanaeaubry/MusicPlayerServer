@@ -1,5 +1,11 @@
 import com.google.gson.JsonObject;
 
+/**
+ * A process is created
+ * @author nanaeaubry
+ *
+ */
+
 public class Process implements Runnable {
 
 

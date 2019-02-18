@@ -4,7 +4,7 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * 
+ *  RPC Manager will manage the remote protocols from server to client
  * @author nanaeaubry
  *
  */

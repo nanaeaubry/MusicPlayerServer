@@ -3,6 +3,12 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Scanner;
 
+/**
+ * Main Class for server. Will provide menu with options from terminal
+ * @author nanaeaubry
+ *
+ */
+
 public class Server {
 
 	// CONSTANTS

@@ -3,7 +3,7 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * 
+ *  Sender Class will send messages to the client side
  * @author nanaeaubry
  *
  */

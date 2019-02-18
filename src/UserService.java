@@ -14,6 +14,15 @@ import com.google.gson.JsonObject;
 import com.google.gson.reflect.TypeToken;
 import com.google.gson.stream.JsonReader;
 
+/**
+ * User Service Class will display the playlists that each user has when they are logged in.
+ * Class will get create, delete, and get playlists.
+ * Playlists can have songs added, deleted, and displayed.
+ * 
+ * @author nanaeaubry
+ *
+ */
+
 public class UserService {
 
 	Object sync;

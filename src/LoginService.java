@@ -6,6 +6,13 @@ import java.util.ArrayList;
 
 import com.google.gson.JsonObject;
 
+/**
+ * Login Service Class is responsible for reading in users
+ * and authenticating them. Will verify username and password and send 
+ * informationt to client. A userId is taken from each user.
+ * @author nanaeaubry
+ *
+ */
 public class LoginService {
 
 	private static ArrayList<String> accounts = null; // list of valid accounts

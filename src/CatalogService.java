@@ -1,4 +1,5 @@
 import java.io.FileReader;
+
 import java.io.IOException;
 
 import java.util.ArrayList;
@@ -7,6 +8,15 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.stream.JsonReader;
+
+/**
+ * CatalogService Class will communicate the song list to the client.
+ * It reads in the json of music from the assets folder and will capture
+ * the information needed to give to the client.
+ * 
+ * @author nanaeaubry
+ *
+ */
 
 public class CatalogService {
 	private ArrayList<Item> items;
