@@ -4,7 +4,7 @@ import java.util.List;
 
 /**
  * 
- * @author rTunes team
+ * @author nanaeaubry
  *
  */
 public class Sender implements Runnable {

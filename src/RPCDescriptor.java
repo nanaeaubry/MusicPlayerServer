@@ -13,7 +13,7 @@ import com.google.gson.JsonSyntaxException;
 /**
  * Class RPCDescriptor
  * 
- * @author rTunes team
+ * @author nanaeaubry
  *
  */
 

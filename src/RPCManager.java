@@ -5,7 +5,7 @@ import java.util.List;
 
 /**
  * 
- * @author rTunes team
+ * @author nanaeaubry
  *
  */
 public class RPCManager implements Runnable {

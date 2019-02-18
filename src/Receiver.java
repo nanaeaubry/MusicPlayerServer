@@ -8,7 +8,7 @@ import java.util.List;
  * thread. The received datagrams are stored in a static FIFO queue The
  * datagrams can be retrieved from the queue by the static function pop()
  * 
- * @author rTunes team
+ * @author nanaeaubry
  *
  */
 public class Receiver implements Runnable {

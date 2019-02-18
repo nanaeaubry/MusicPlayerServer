@@ -1,10 +1,7 @@
 
 /**
 * The Dispatcher implements DispatcherInterface. 
-*
-* @author  Oscar Morales-Ponce
-* @version 0.15
-* @since   02-11-2019 
+
 */
 
 import java.util.HashMap;
