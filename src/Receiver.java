@@ -56,9 +56,12 @@ public class Receiver implements Runnable {
 	@Override
 	public void run() {
 		running = true;
+		System.out.println("Receiver running. Waiting for a datagram...");
 		while (running) {
-			System.out.println("Receiver running. Waiting for a datagram...");
 			DatagramPacket received = connection.getDatagram();
+			if (received == null) {
+				continue;
+			}
 			synchronized (queue) {
 				queue.add(received);
 			}

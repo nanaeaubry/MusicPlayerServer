@@ -3,6 +3,7 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
+import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.util.Arrays;
 
@@ -71,6 +72,7 @@ public class UDPConnection {
 			socket.close();
 			socket = null;
 		}
+		System.out.println("Connection closed");
 	}
 			
 	//receives a datagram from the opened port 
@@ -80,15 +82,18 @@ public class UDPConnection {
 				//get the datagram from the port
 				byte[] buffer = new byte[maxDataLength];	
 				DatagramPacket request = new DatagramPacket(buffer, buffer.length);
+				socket.setSoTimeout(1000);
 				socket.receive(request);   
 				
 				//Set the buffer to contain only the received data
 				byte[] data = Arrays.copyOfRange(buffer, 0, request.getLength());
 				request.setData(data);
-				return(request);				
+				return request;				
 
-		}catch (IOException e){
-	        	e.printStackTrace();
+	    } catch (SocketTimeoutException e) {
+	    	return null;
+		} catch (IOException e){
+        	e.printStackTrace();
 	    }
 		
 		return null;		

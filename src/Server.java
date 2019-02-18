@@ -20,6 +20,8 @@ public class Server {
 		// Dispatcher system
 		Dispatcher dispatcher = new Dispatcher();
 		dispatcher.registerService("LoginService", new LoginService());
+		dispatcher.registerService("CatalogService", new CatalogService());
+		dispatcher.registerService("UserService", new UserService());
 
 		// Create the services
 		Receiver receiver = new Receiver(connection);

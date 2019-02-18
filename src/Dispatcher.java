@@ -30,10 +30,13 @@ public class Dispatcher implements DispatcherInterface {
 	 */
 	public JsonObject dispatch(JsonObject request) {
 
-		JsonObject response = new JsonObject();
-
 		// Get service for the request
 		Object service = listOfServices.get(request.get("serviceName").getAsString());
+		if (service == null) {
+			JsonObject response = new JsonObject();
+			response.addProperty("error", "Service does not exist");
+			return response;
+		}
 
 		try {
 
@@ -48,57 +51,24 @@ public class Dispatcher implements DispatcherInterface {
 					method = methods[i];
 			}
 			if (method == null) {
+				JsonObject response = new JsonObject();
 				response.addProperty("error", "Method does not exist");
 				return response;
 			}
 
-			// Read params as String
-			Class<?>[] types = method.getParameterTypes();
-			String[] strParam = new String[types.length];
+			// Read param object
 			JsonObject jsonParam = request.get("param").getAsJsonObject();
-			int j = 0;
-			for (Map.Entry<String, JsonElement> entry : jsonParam.entrySet()) {
-				strParam[j++] = entry.getValue().getAsString();
-			}
-
-			// Convert string params to the correct type
-			Object[] parameter = new Object[types.length];
-			for (int i = 0; i < types.length; i++) {
-				switch (types[i].getCanonicalName()) {
-				case "java.lang.Long":
-					parameter[i] = Long.parseLong(strParam[i]);
-					break;
-				case "java.lang.Integer":
-					parameter[i] = Integer.parseInt(strParam[i]);
-					break;
-				case "java.lang.String":
-					parameter[i] = new String(strParam[i]);
-					break;
-				}
-			}
 
 			// Invoke the method
-			Class<?> returnType = method.getReturnType();
-			String ret = "";
-			switch (returnType.getCanonicalName()) {
-			case "java.lang.Long":
-				ret = method.invoke(service, parameter).toString();
-				break;
-			case "java.lang.Integer":
-				ret = method.invoke(service, parameter).toString();
-				break;
-			case "java.lang.String":
-				ret = (String) method.invoke(service, parameter);
-				break;
-			}
-			response.addProperty("ret", ret);
+			return (JsonObject) method.invoke(service, jsonParam);
 
 		} catch (InvocationTargetException | IllegalAccessException e) {
-			response.addProperty("error",
-					"Error on " + request.get("objectName").getAsString() + "." + request.get("remoteMethod").getAsString());
+			JsonObject response = new JsonObject();
+			response.addProperty("error", "Error on " + request.get("objectName").getAsString() + "."
+					+ request.get("remoteMethod").getAsString());
+			return response;
 		}
 
-		return response;
 	}
 
 	/*

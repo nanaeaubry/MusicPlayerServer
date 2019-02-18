@@ -54,3 +54,6 @@ local.properties
 .cache-main
 .scala_dependencies
 .worksheet
+
+# assets
+assets/users

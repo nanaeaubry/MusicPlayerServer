@@ -4,6 +4,8 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 
+import com.google.gson.JsonObject;
+
 public class LoginService {
 
 	private static ArrayList<String> accounts = null; // list of valid accounts
@@ -18,8 +20,6 @@ public class LoginService {
 	private void loadAccounts() {
 		try {
 			String line = "";
-			accounts.clear();
-			uids.clear();
 
 			// Open the file for reading
 			File file = new File("./assets/accounts.txt");
@@ -40,7 +40,11 @@ public class LoginService {
 		}
 	}
 
-	public String login(String username, String password) {
+	public JsonObject login(JsonObject param) {
+		
+		String username = param.get("username").getAsString();
+		String password = param.get("password").getAsString();
+		
 		String uid = ""; // by default empty uid, which means unauthorized user
 		String attempt = username.trim() + ";" + password.trim(); // build the possible account
 
@@ -49,7 +53,10 @@ public class LoginService {
 		if (index >= 0) {
 			uid = uids.get(index); // gets the UID if user is authorized
 		}
+		
+		JsonObject response = new JsonObject();
+		response.addProperty("ret", uid);
 
-		return uid;
+		return response;
 	}
 }

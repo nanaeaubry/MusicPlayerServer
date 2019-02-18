@@ -46,11 +46,11 @@ public class RPCManager implements Runnable {
 	}
 
 
-	// Executes the process manager
+	// Executes the RPC manager
 	@Override
 	public void run() {
 
-		System.out.println("Process manager running.");
+		System.out.println("RPC manager running.");
 
 		running = true;
 		while (running) {
@@ -66,7 +66,7 @@ public class RPCManager implements Runnable {
 				// Try to get the RPC from the datagram
 				RPCDescriptor rpc = new RPCDescriptor();
 				if (!rpc.unmarshall(datagram)) {
-					System.out.println("Process manager message: a invalid RPC was received");
+					System.out.println("RPC manager message: a invalid RPC was received");
 					System.out.println("Datagram: " + new String(datagram.getData()));
 					continue;
 				}
@@ -74,7 +74,7 @@ public class RPCManager implements Runnable {
 				synchronized (rpcList) {
 					// Discarding duplicate messages
 					if (rpcList.contains(rpc)) {
-						System.out.println("Process manager message: a duplicated RPC was received");
+						System.out.println("RPC manager message: a duplicated RPC was received");
 						System.out.println("Discarted execute: " + rpc.getExecute());
 						continue;
 					}
@@ -96,7 +96,7 @@ public class RPCManager implements Runnable {
 		} // End of while loop
 
 		// Service was stopped
-		System.out.println("Process manager stopped.");
+		System.out.println("RPC manager stopped.");
 
 	} // End of run
 
