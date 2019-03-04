@@ -72,8 +72,7 @@ public class Sender implements Runnable {
 				}
 
 				connection.sendData(rpc.marshall(), rpc.getSourceAddress(), rpc.getSourcePort());
-				System.out.println("Sender: RPC sent to " + rpc.getSourceAddress() + " port: " + rpc.getSourcePort()
-						+ " data: " + new String(rpc.marshall()));
+				System.out.println("Datagram sent:" + rpc.getSourceId());
 
 			} catch (InterruptedException e) {
 				e.printStackTrace();

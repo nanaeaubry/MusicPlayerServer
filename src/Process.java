@@ -27,13 +27,10 @@ public class Process implements Runnable {
 		JsonObject response = dispatcher.dispatch(rpc.getExecute());
 		
 		// Make rpc for the reply
-		RPCDescriptor reply = new RPCDescriptor(rpc.getSourceAddress(), rpc.getSourcePort(), RPCDescriptor.REPLY, rpc.getRequestId(), rpc.getUserId(), response);
+		RPCDescriptor reply = new RPCDescriptor(rpc, response);
 		
 		// Push the reply rpc in the sender queue
 		Sender.insert(reply);
-		
-		// Inform the manager that this rpc has been executed by removing it from the current rpc list
-		RPCManager.removeRPC(rpc);
 	}	
 	
 	

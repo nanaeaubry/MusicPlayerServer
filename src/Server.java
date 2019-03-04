@@ -28,8 +28,9 @@ public class Server {
 		dispatcher.registerService("LoginService", new LoginService());
 		dispatcher.registerService("CatalogService", new CatalogService());
 		dispatcher.registerService("UserService", new UserService());
+		dispatcher.registerService("SongService", new SongService());
 
-		// Create the services
+		// Create the receiver and sender
 		Receiver receiver = new Receiver(connection);
 		Sender sender = new Sender(connection);
 		RPCManager rpcManager = new RPCManager(dispatcher);

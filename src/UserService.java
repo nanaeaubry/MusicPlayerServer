@@ -50,7 +50,7 @@ public class UserService {
 		}
 
 		JsonObject response = new JsonObject();
-		response.add("playlists", playlists);
+		response.add("ret", playlists);
 		return response;
 	}
 
