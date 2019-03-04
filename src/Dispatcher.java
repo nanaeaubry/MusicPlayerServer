@@ -80,23 +80,4 @@ public class Dispatcher implements DispatcherInterface {
 		listOfServices.put(serviceName, service);
 	}
 
-	/*
-	 * Testing public static void main(String[] args) { // Instance of the
-	 * Dispatcher Dispatcher dispatcher = new Dispatcher(); // Instance of the
-	 * services that te dispatcher can handle SongDispatcher songDispatcher = new
-	 * SongDispatcher();
-	 * 
-	 * dispatcher.registerObject(songDispatcher, "SongServices");
-	 * 
-	 * // Testing the dispatcher function // First we read the request. In the final
-	 * implementation the jsonRequest // is obtained from the communication module
-	 * try { String jsonRequest = new
-	 * String(Files.readAllBytes(Paths.get("./getSongChunk.json"))); String ret =
-	 * dispatcher.dispatch(jsonRequest); System.out.println(ret);
-	 * 
-	 * //System.out.println(jsonRequest); } catch (Exception e) {
-	 * System.out.println(e); }
-	 * 
-	 * }
-	 */
 }
