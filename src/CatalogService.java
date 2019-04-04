@@ -3,6 +3,7 @@ import java.io.FileReader;
 import java.io.IOException;
 
 import java.util.ArrayList;
+import java.util.Scanner;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
@@ -20,19 +21,23 @@ import com.google.gson.stream.JsonReader;
  */
 
 public class CatalogService {
-	private ArrayList<Item> items;
 
-	public CatalogService() {
-		items = new ArrayList<Item>();
-		loadSongs();
+	private static final String ASSETS_MUSIC_JSON = "./assets/music.json";
+
+	private DFS dfs;
+
+	public CatalogService(DFS dfs) {
+		this.dfs = dfs;
+
+		try {
+			dfs.create(ASSETS_MUSIC_JSON);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
 
 	public JsonObject getSongs(JsonObject param) {
 		JsonElement element = param.get("startIndex");
-		int startIndex = 0;
-		if (element != null) {
-			startIndex = element.getAsInt();
-		}
 
 		element = param.get("count");
 		int count = 100;
@@ -48,30 +53,36 @@ public class CatalogService {
 
 		if (filter != null) {
 			filter = filter.stripLeading().toLowerCase();
+			JsonObject ret = dfs.search(filter, count);
+			System.out.println(ret);
+			return ret;
 		}
 
 		JsonArray ret = new JsonArray();
-		for (int i = startIndex, j = 0; i < items.size() && j < count; i++) {
-			Item item = items.get(i);
-			String title = item.song.title;
-			String album = item.release.name;
-			String artist = item.artist.name;
-			if (filter != null && filter.length() > 0) {
-				if (title.toLowerCase().indexOf(filter) < 0 && artist.toLowerCase().indexOf(filter) < 0
-						&& album.toLowerCase().indexOf(filter) < 0) {
-					continue;
+		for (int i = 0; i < 2; i++) {
+			// Remote Input File Stream
+			try {
+				RemoteInputFileStream dataraw = this.dfs.read(ASSETS_MUSIC_JSON, i);
+				dataraw.connect();
+
+				// Scanner
+				Scanner scan = new Scanner(dataraw);
+				scan.useDelimiter("\\A");
+				String data = scan.next();
+
+				// Convert from json to ArrayList
+				CatalogPage page = new CatalogPage();
+				Gson gson = new Gson();
+				page = gson.fromJson(data, CatalogPage.class);
+
+				// Adding results to return
+				for (int j = 0; j < page.size(); j++) {
+					ret.add(page.getItem(j).getJson());
 				}
-
+				scan.close();
+			} catch (Exception e) {
+				e.printStackTrace();
 			}
-
-			JsonObject song = new JsonObject();
-			song.addProperty("id", item.song.id);
-			song.addProperty("title", title);
-			song.addProperty("album", album);
-			song.addProperty("artist", artist);
-
-			ret.add(song);
-			j++;
 		}
 
 		JsonObject response = new JsonObject();
@@ -79,40 +90,4 @@ public class CatalogService {
 		return response;
 	}
 
-	private void loadSongs() {
-		try {
-			// Open the file for reading
-			JsonReader jsonReader = new JsonReader(new FileReader("./assets/music.json"));
-			Gson gson = new Gson();
-
-			jsonReader.beginArray();
-			while (jsonReader.hasNext()) {
-				Item item = gson.fromJson(jsonReader, Item.class);
-				items.add(item);
-			}
-			jsonReader.close();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
-
-	protected class Item {
-		public Release release;
-		public Artist artist;
-		public Song song;
-	}
-
-	protected class Release {
-		public String name;
-	}
-
-	protected class Artist {
-		public String name;
-	}
-
-	protected class Song {
-		public String id;
-		public String title;
-
-	}
 }

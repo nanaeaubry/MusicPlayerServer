@@ -1,0 +1,15 @@
+#!/bin/bash
+if [ "$*" == "" ]; then
+  echo "run peers initialPort"
+  exit;
+fi
+
+
+osascript -e "tell application \"Terminal\" to do script \"cd $PWD && java -cp ./jars/gson-2.8.5.jar:./bin DFSCommand $2\""
+
+for ((i = 1; i < $1; i++));
+do
+port=$(($i + $2))
+  osascript -e "tell application \"Terminal\" to do script \"cd $PWD && java -cp ./jars/gson-2.8.5.jar:./bin DFSCommand $port $2\""
+
+done
