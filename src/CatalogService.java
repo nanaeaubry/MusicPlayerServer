@@ -62,10 +62,11 @@ public class CatalogService {
 
 		//Load first 100 songs
 		JsonArray ret = new JsonArray();
-		for (int i = 0; i < 2; i++) {
+		for (int i = 0; i < 1; i++) {
 			// Remote Input File Stream
 			try {
 				RemoteInputFileStream dataraw = this.dfs.read(ASSETS_MUSIC_JSON, i);
+				int divider = 10;
 				dataraw.connect();
 
 				// Scanner
@@ -79,7 +80,7 @@ public class CatalogService {
 				page = gson.fromJson(data, CatalogPage.class);
 
 				// Adding results to return
-				for (int j = 0; j < page.size(); j++) {
+				for (int j = 0; j < (page.size() / 10); j++) {
 					ret.add(page.getItem(j).getJson());
 				}
 				scan.close();

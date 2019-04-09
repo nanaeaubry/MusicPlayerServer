@@ -394,7 +394,7 @@ public class DFS {
 		System.out.println(TAG + ":catalogItems.size() = " + catalogItems.size()); // DEBUG
 
 		// Variables
-		int songs_per_page = 50;
+		int songs_per_page = 1000;
 		CatalogPage catalogpage = new CatalogPage();
 		// OLD
 		FileJson file = new FileJson(); // metadata

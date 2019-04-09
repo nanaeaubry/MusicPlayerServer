@@ -23,7 +23,7 @@ public class RemoteInputFileStream extends InputStream implements Serializable {
     public int pos;
     public InputStream input;
     public Semaphore sem;
-    private static int BUFFER_LENGTH = 2 << 15;
+    private static int BUFFER_LENGTH = 1 << 12;
     /**
      * It stores a buffer with FRAGMENT_SIZE bytes for the current reading.
      * This variable is useful for UDP sockets. Thus bur is the datagram
