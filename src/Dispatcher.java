@@ -6,10 +6,8 @@
 
 import java.util.HashMap;
 
-import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
-import java.util.*;
 import java.lang.reflect.*;
 
 public class Dispatcher implements DispatcherInterface {
@@ -19,11 +17,8 @@ public class Dispatcher implements DispatcherInterface {
 		listOfServices = new HashMap<String, Object>();
 	}
 
-	/*
-	 * dispatch: Executes the remote method in the corresponding Object
-	 * 
-	 * @param request: Request: it is a Json file { "remoteMethod":"getSongChunk",
-	 * "objectName":"SongServices", "param": { "song":490183, "fragment":2 } }
+	/**
+	 * Execute remote object
 	 */
 	public JsonObject dispatch(JsonObject request) {
 

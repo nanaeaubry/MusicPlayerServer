@@ -1,15 +1,11 @@
-import java.io.FileReader;
 
-import java.io.IOException;
-
-import java.util.ArrayList;
 import java.util.Scanner;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.google.gson.stream.JsonReader;
+
 
 /**
  * CatalogService Class will communicate the song list to the client. It reads
@@ -36,6 +32,11 @@ public class CatalogService {
 		}
 	}
 
+	/**
+	 * Get list of music from music.json
+	 * @param param parameters needed to specificy what songs to get
+	 * @return music as a jsonobject 
+	 */
 	public JsonObject getSongs(JsonObject param) {
 		JsonElement element = param.get("startIndex");
 
@@ -51,6 +52,7 @@ public class CatalogService {
 			filter = element.getAsString();
 		}
 
+		//filter music
 		if (filter != null) {
 			filter = filter.stripLeading().toLowerCase();
 			JsonObject ret = dfs.search(filter, count);
@@ -58,6 +60,7 @@ public class CatalogService {
 			return ret;
 		}
 
+		//Load first 100 songs
 		JsonArray ret = new JsonArray();
 		for (int i = 0; i < 2; i++) {
 			// Remote Input File Stream

@@ -1,8 +1,11 @@
 
-import java.io.*;
 import java.util.*;
-import com.google.gson.Gson;
-import com.google.gson.JsonObject;
+
+/**
+ * Class that acts as the main for the program. 
+ * @author nanaeaubry
+ *
+ */
 
 public class DFSCommand {
 	DFS dfs;
