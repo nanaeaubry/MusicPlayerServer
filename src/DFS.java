@@ -1,37 +1,57 @@
-
+import java.rmi.*;
+import java.net.*;
 import java.util.*;
 import java.io.*;
 import java.nio.file.*;
 import java.math.BigInteger;
 import java.security.*;
+import java.io.InputStream;
+import java.util.*;
+
+import java.util.TreeMap;
+import java.util.HashMap;
+import java.util.Map;
 
 import com.google.gson.Gson;
 import com.google.gson.stream.JsonReader;
-
+import com.google.gson.stream.JsonWriter;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 
-/**
- * Distributed file system that utilizes chord peer to peer
- * 
- * @author nanaeaubry
- *
- */
+/* Metadata JSON Format
+{"file":
+  [
+     {"name":"MyFile",
+      "size":128000000,
+      "pages":
+      [
+         {
+            "guid":11,
+            "size":64000000
+            "letter":"A"
+            "last_letter"B"
+         },
+         {
+            "guid":13,
+            "size":64000000
+            "letter":"B"
+            "last_letter"C"
+         }
+      ]
+      }
+   ]
+} 
+*/
 
 public class DFS {
 
 	// METADATA CLASSES---------------------------
 
-	/**
-	 * Music.json will be distributed into pages to be held on each node of the
-	 * chord
-	 * 
-	 * @author nanaeaubry
-	 *
-	 */
 	public class PagesJson {
 		Long guid;
 		int size;
+		String letter;
+		String last_letter;
 
 		public PagesJson() {
 			guid = (long) 0;
@@ -40,11 +60,19 @@ public class DFS {
 
 		// getters
 		public Long getGUID() {
-			return guid;
+			return this.guid;
 		}
 
 		public int getSize() {
-			return size;
+			return this.size;
+		}
+
+		public String getLetter() {
+			return this.letter;
+		}
+
+		public String getLastLetter() {
+			return this.last_letter;
 		}
 
 		// setters
@@ -56,14 +84,15 @@ public class DFS {
 			this.size = size;
 		}
 
-	};
+		public void setLetter(String l) {
+			this.letter = l;
+		}
 
-	/**
-	 * File will be an arraylist of all the pages found on the chord for that file
-	 * 
-	 * @author nanaeaubry
-	 *
-	 */
+		public void setLastLetter(String l) {
+			this.last_letter = l;
+		}
+
+	};
 
 	public class FileJson {
 		String name;
@@ -71,6 +100,7 @@ public class DFS {
 		int numberOfItems;
 		int itemsPerPage;
 		ArrayList<PagesJson> pages;
+		// future improvement: add a hashmap with (letter -> page number) (key->value)
 
 		public FileJson() {
 			this.name = "not set";
@@ -125,37 +155,21 @@ public class DFS {
 			}
 		}
 
-		/**
-		 * Add a page to the file
-		 * 
-		 * @param page the page to be added
-		 */
 		public void addPage(PagesJson page) {
 			this.pages.add(page);
 			this.size += page.getSize();
 		}
 
-		/**
-		 * Add a page based on its id and size
-		 * 
-		 * @param guid      id of the page
-		 * @param page_size size that page is
-		 */
-		public void addPage(Long guid, int page_size) {
+		public void addPage(Long guid, int page_size, String letter) {
 			PagesJson page = new PagesJson(); // metadata
 			page.setGUID(guid); // metadata
 			page.setSize(page_size); // metadata
+			page.setLetter(letter); // metadata
 
 			this.addPage(page);
 		}
 	};
 
-	/**
-	 * All files that are on the chord
-	 * 
-	 * @author nanaeaubry
-	 *
-	 */
 	public class FilesJson {
 		List<FileJson> files;
 
@@ -177,11 +191,6 @@ public class DFS {
 			return files.size();
 		}
 
-		/**
-		 * Delete a file from the files
-		 * 
-		 * @param fileName name of the file to be deleted
-		 */
 		public void deleteFile(String fileName) {
 			int index_to_remove = 0;
 			for (int i = 0; i < files.size(); i++) {
@@ -196,7 +205,6 @@ public class DFS {
 	// END METADATA CLASSES---------------------------
 
 	// HASH FUNCTION
-
 	private long md5(String objectName) {
 		try {
 			MessageDigest m = MessageDigest.getInstance("MD5");
@@ -214,15 +222,32 @@ public class DFS {
 	// END HELPER CLASSES---------------------------------------
 
 	// DFS Variables
+	int port; //
+	Chord chord; //
+	ArrayList<CatalogItem> catalogItems; // Used in function loadCatalog().
+	FilesJson local_metadata; // Used to reduce the number of times that metadata is requested from chord.
+	Long expiration = (long) 10000; // If the metadata is older then the expiration time it gets reloaded at the
+									// next search request.
+	Long metadataTimeStamp = (long) 0; // Time when metadata was read from the chord.
+										// Initial time is zero to ensure it gets updated the first time its requested.
+	int items_per_page = 1000;
+	int sleepTime = 500;
 
-	ArrayList<CatalogItem> catalogItems;
-	int port;
-	Chord chord;
+	TreeMap<String, CatalogPage> reverseIndex;
+	// HashMap <String, CatalogPage> reverseIndex;
+	ArrayList<String> sortedKeys;
 
 	// END DFS Variables
 
 	public DFS(int port) throws Exception {
 		catalogItems = new ArrayList<CatalogItem>();
+		local_metadata = new FilesJson();
+		reverseIndex = new TreeMap<String, CatalogPage>(); // 3k is the number of words in common use.
+
+		// reverseIndex = new HashMap<String, CatalogPage>(3000); //3k is the number of
+		// words in common use.
+		// Oxford english dictionary contains 171k words in current use.
+		sortedKeys = new ArrayList<String>();
 
 		this.port = port;
 		long guid = md5("" + port);
@@ -237,12 +262,50 @@ public class DFS {
 
 	}
 
+	// Testing Chord size Function
+	public void determineChordSize() throws Exception {
+		// Print Initial Value //DEBUG
+		// System.out.println("Initial Value: " + chord.getChordSize()); //DEBUG
+
+		// Determine size
+		chord.onChordSize(chord.getId(), 0);
+
+		// Wait //DEBUG
+		// System.out.println("Sleeping..."); //DEBUG
+		// Thread.sleep(500); //DEBUG
+
+		// Print new Value
+		System.out.println("Chord Size: " + chord.getChordSize());
+	}
+
+	// Maps the file to a treemap
+	public void map(String fileName) {
+		// fileName = music.json
+
+		// 1 Get music.json metadata
+
+		// 2 for each page in file "music.json"
+
+		// get page guid
+
+		// locate peer
+
+		// peer.map(guid)
+	}
+
+	// tell every peer to emit their tree
+	public void reduce(Long guid) {
+		// tell successor to emit their tree
+
+		// 1 locate successor
+
+		// peer.emit()
+
+	}
+
 	/**
-	 * Join the chord as a node
-	 * 
-	 * @param Ip   ip of joining server
-	 * @param port port to join
-	 * @throws Exception if there is nothing to join
+	 * Join the chord
+	 *
 	 */
 	public void join(String Ip, int port) throws Exception {
 		chord.joinRing(Ip, port);
@@ -250,30 +313,43 @@ public class DFS {
 	}
 
 	/**
-	 * Leave the chord
-	 * 
-	 * @throws Exception
+	 * leave the chord
+	 *
 	 */
 	public void leave() throws Exception {
 		chord.leave();
 	}
 
 	/**
-	 * Print the status of the peers in the chord
-	 * 
-	 * @throws Exception
+	 * print the status of the peer in the chord
+	 *
 	 */
 	public void print() throws Exception {
 		chord.print();
 	}
 
 	/**
-	 * Read metadata from the chord
-	 * 
-	 * @return files that are on the chord
-	 * @throws Exception
+	 * readMetaData read the metadata from the chord
+	 *
 	 */
 	public FilesJson readMetaData() throws Exception {
+		// DEBUG
+		String TAG = "readMetaData";
+		// System.out.println(TAG+"()");
+		int readSleepTime = 300;// miliseconds
+
+		Long currentTime = System.currentTimeMillis();
+
+		// if metadata is not too old return itself ie: do not change
+		Long difference = currentTime - metadataTimeStamp;
+		// System.out.println(TAG + "(): time difference = " + difference); // DEBUG
+		if ((currentTime - metadataTimeStamp) < expiration) {
+			// System.out.println(TAG+"(): metadata has not expired"); // DEBUG
+			return local_metadata;
+		}
+		// else metadata is too old, refresh it.
+		// System.out.println(TAG+"(): refresshing metadata"); // DEBUG
+		metadataTimeStamp = System.currentTimeMillis(); // update timestamp
 
 		FilesJson filesJson = null;
 		try {
@@ -281,39 +357,37 @@ public class DFS {
 			long guid = md5("Metadata");
 			ChordMessageInterface peer = chord.locateSuccessor(guid);
 			RemoteInputFileStream metadataraw = peer.get(guid);
-			metadataraw.connect();
+			metadataraw.connect(); // NEW RFIS
 			Scanner scan = new Scanner(metadataraw);
 			scan.useDelimiter("\\A");
 			String strMetaData = scan.next();
 
+			// System.out.println(strMetaData); // DEBUG
 			filesJson = gson.fromJson(strMetaData, FilesJson.class);
 		} catch (NoSuchElementException ex) {
 			filesJson = new FilesJson();
 		}
+		local_metadata = filesJson;
 		return filesJson;
 	}
 
 	/**
-	 * Write metadata to the chord
-	 * 
-	 * @param filesJson files to write to
-	 * @throws Exception
+	 * writeMetaData write the metadata back to the chord
+	 *
 	 */
 	public void writeMetaData(FilesJson filesJson) throws Exception {
+		metadataTimeStamp = (long) 0; // zero to make system refresh metadata
 		long guid = md5("Metadata");
 		ChordMessageInterface peer = chord.locateSuccessor(guid);
-		System.out.println("\tSaving Metadata to peer: " + peer.getId()); // DEBUG
+		System.out.println("\n\tSaving Metadata to peer: " + peer.getId()); // DEBUG
 
 		Gson gson = new Gson();
 		peer.put(guid, gson.toJson(filesJson));
 	}
 
 	/**
-	 * Write page data to the chord
-	 * 
-	 * @param catalogpage page that will be written in
-	 * @param guid        unique id of the page
-	 * @throws Exception
+	 * writePageData write the page data to the chord
+	 *
 	 */
 	public void writePageData(CatalogPage catalogpage, Long guid) throws Exception {
 		ChordMessageInterface peer = chord.locateSuccessor(guid);
@@ -325,11 +399,8 @@ public class DFS {
 	}
 
 	/**
-	 * Change the name of hte metadata
-	 * 
-	 * @param oldName old name of the metadata
-	 * @param newName new name for the same metadata
-	 * @throws Exception
+	 * Change Name
+	 *
 	 */
 	public void move(String oldName, String newName) throws Exception {
 		// TODO: Change the name in Metadata
@@ -337,10 +408,9 @@ public class DFS {
 	}
 
 	/**
-	 * List files in the system
-	 * 
-	 * @return String of file names
-	 * @throws Exception
+	 * List the files in the system
+	 *
+	 * @param filename Name of the file
 	 */
 	public String lists() throws Exception {
 		// DEBUG
@@ -353,6 +423,7 @@ public class DFS {
 			listOfFiles += files.getFile(i).name + "\n";
 		}
 
+		// System.out.println(TAG + ":files.size() == " + files.size());//DEBUG
 		if (files.size() == 0) {
 			return "Empty";
 		}
@@ -360,64 +431,219 @@ public class DFS {
 		return listOfFiles;
 	}
 
-	/**
-	 * Generate global unique identifier for file
-	 * @param fileName name of the file that needs a guid
-	 * @return
-	 */
 	public Long generateGUID(String fileName) {
 		Long timeStamp = System.currentTimeMillis();
 		return md5(fileName + timeStamp);
 	}
 
-	/**
-	 * Creat MP3 for a file
-	 * @param fileName name of the file the MP3 will be created in
-	 */
 	public void createMP3(String fileName) {
 
 	}
 
-	/**
-	 * Create an empty file
-	 * @param fileName name of the empty file
-	 * @throws Exception
-	 */
+	// TODO: Pre-process the music.json catalog and produce the sorted catalogs
+	private void createSortedCatalogs(String fileName) {
+		// Done in separate project
+	}
+
+	public void createIndex(String filename) throws Exception {
+		System.out.println("createIndex()");
+
+		// -----Outline-----
+
+		// 1 Load Catalog
+
+		// 2 For each song
+		// For each word in (song name, artist name and album name)
+		// if first 2 chars of word exists in Hash (Reverse Index)
+		// add song to CatalogPage
+		// else
+		// add first 2 chars word to Hash ()
+		// add song to CatalogPage
+
+		// -----Implementation-----
+
+		// 1 Load Catalog
+		CatalogPage catalog = new CatalogPage();
+		catalog.loadCatalog(filename);
+		int start = 0;
+		int end = catalog.size(); // size = 10k
+
+		// DEBUG - Print Start and end Index
+		System.out.println("start: " + start);
+		System.out.println("end: " + end);
+
+		// 2 For each song in catalog
+		for (int i = start; i < end; i++)
+
+		{
+
+			// Get all words in artist, album and song title
+			String line = catalog.getItem(i).artist.name;
+			line = line + " " + catalog.getItem(i).release.name; // album
+			line = line + " " + catalog.getItem(i).song.title;
+
+			// System.out.println("line: (" + line +")"); // DEBUG - Print Line
+			line = line.toLowerCase();
+
+			// Separate line into words
+			String[] words = line.split("\\s+");
+
+			// TODO
+			// Remove punctuation // Remove Special Symbols
+			/**
+			 * for (int j = 0; j < words.length; j++) { // You may want to check for a
+			 * non-word character before blindly // performing a replacement // It may also
+			 * be necessary to adjust the character class words[i] =
+			 * words[i].replaceAll("[^\\w]", ""); }
+			 **/
+
+			// For each word
+			for (int k = 0; k < words.length; k++) {
+				// System.out.println("\t"+ "word: (" + words[k] +")"); // DEBUG - Print each
+				// word
+
+				// Get key
+				String key = words[k];
+				if (key.length() > 2) {
+					key = key.substring(0, 2);// get first 2 characters only
+				}
+
+				// if first 2 chars of word exists in Hash (Reverse Index)
+				if (reverseIndex.containsKey(key)) {
+					// add song to CatalogPage
+					// System.out.println("\t" + "add song to CatalogPage"); // DEBUG
+
+					reverseIndex.get(key).addItem(catalog.getItem(i)); // Uses 2 chars as key
+					// reverseIndex.get(words[k]).addItem(catalog.getItem(i)); //Uses Full word as
+					// Key
+
+				} else // this is a new key, add it to the HashMap
+				{
+					// System.out.println("\t"+ "add word to Hash ("+ words[k] +")"); // DEBUG
+					sortedKeys.add(key);// used later when saving the files to the peers.
+
+					// add song to new CatalogPage
+					CatalogPage capa = new CatalogPage();
+					capa.addItem(catalog.getItem(i));
+
+					// add first two chars of word to Hash ()
+					reverseIndex.put(key, capa);
+
+				}
+
+			}
+
+		}
+
+		System.out.println("Indexing Done.");
+	}
+
+	public void reverseIndexStats() {
+		System.out.println("\n");
+		System.out.println("reverseIndexStats()");
+		System.out.println("reverseIndex Size: " + reverseIndex.size());// Number of words in hash
+
+		// Average Variables
+		Double CMA = 0.0; // Cummulative Moving Average
+		int count = 0; // Used to calculate CMA
+
+		// Get all keys and the size
+		ArrayList<String> words = new ArrayList<String>();
+		for (Map.Entry<String, CatalogPage> entry : reverseIndex.entrySet()) {
+			int size = entry.getValue().size();
+			// System.out.println("Key = " + entry.getKey() + ", Value.size() = " +
+			// entry.getValue().size());
+			words.add(entry.getKey() + " : " + size);
+
+			CMA = CMA + ((size - CMA) / (count + 1));
+			count = count + 1;
+		}
+
+		// Sort List
+		Collections.sort(words);
+		System.out.println("Sorted List:");
+		for (String s : words) {
+			System.out.println(s);
+		}
+
+		// Print Average number of Items per key
+		System.out.println("\nCMA: " + CMA);
+		System.out.println("\nwords.size(): " + words.size());
+
+	}
+
+	// Generic Method // Not used because I want to access .size() method on
+	// CatalogPage
+	public void printMap(Map mp) {
+		Iterator it = mp.entrySet().iterator();
+		while (it.hasNext()) {
+			Map.Entry pair = (Map.Entry) it.next();
+			System.out.println(pair.getKey() + " = " + pair.getValue());
+			it.remove(); // avoids a ConcurrentModificationException
+		}
+	}
+
+	public void saveReverseIndexToPeers() {
+		System.out.println("saveReverseIndexToPeers()"); // DEBUG
+
+		Collections.sort(sortedKeys);
+		System.out.println("\nsortedKeys.size(): " + sortedKeys.size());
+
+		// -----Outline
+		// for each key in HashMap
+		// save it to a peer
+
+		// -----Implementation
+		// for each key in HashMap, get its value and save it to a peer
+		for (String k : sortedKeys) {
+			System.out.println("key: " + k);// DEBUG
+
+			// generate guid
+			// Long timeStamp = System.currentTimeMillis();
+			Long guid = md5(k + "reverseIndex" + k); // + timeStamp);
+			System.out.println("\tguid = " + guid); // DEBUG
+
+			// save the page to a peer
+			try {
+				writePageData(reverseIndex.get(k), guid);
+			} catch (Exception e) {
+				System.out.println("Error while saving reverseIndex key: " + k); // DEBUG
+			}
+		}
+		System.out.println("save done."); // DEBUG
+	}
+
+	// Assuming the given file is pre-sorted
 	public void create(String fileName) throws Exception {
+		System.out.println("createIndex(" + fileName + ")");
 
-		// DEBUG
-		String TAG = "DFS.create";
-		System.out.println(TAG + "(" + fileName + ")");
+		CatalogPage catalog = new CatalogPage();
+		catalog.loadCatalog(fileName); // use this if reading music.json.
 
-		// LoadCatalog
-		loadCatalog(fileName);
-		System.out.println(TAG + ":catalogItems.size() = " + catalogItems.size()); // DEBUG
+		// Page Data
+		CatalogPage page = new CatalogPage();
 
-		// Variables
-		int songs_per_page = 1000;
-		CatalogPage catalogpage = new CatalogPage();
-		// OLD
-		FileJson file = new FileJson(); // metadata
-		FilesJson metadata = new FilesJson(); // metadata
+		// Metadata
+		FileJson file = new FileJson();
+		FilesJson metadata = new FilesJson();
 		int page_size = 0;
 		Long file_size = (long) 0;
 
 		// Split file into n pages
 		// for each item in catalog save it to a "page"
-		for (int i = 0; i < catalogItems.size(); i++) {
-
-			// Page groups of size "songs_per_page"
+		for (int i = 0; i < catalog.size(); i++) {
+			// Page groups of size "items_per_page"
 			page_size = page_size + 1;
 
 			// get item from catalog and add it to the page
-			catalogpage.addItem(catalogItems.get(i));
+			page.addItem(catalog.getItem(i));
 
-			// if page size reaches "songs_per_page" save the page
-			if ((i + 1) % songs_per_page == 0) {
+			// if page size reaches "items_per_page" save the page
+			if ((i + 1) % this.items_per_page == 0) {
 
 				// DEBUG
 				// System.out.println("i + 1 = " + (i+1) );
-				System.out.println("\tpage_size = " + page_size);
+				System.out.println("\n\tpage_size = " + page_size);
 
 				// Hash each page (name + time stamp) to get its GUID
 				Long timeStamp = System.currentTimeMillis();
@@ -425,20 +651,19 @@ public class DFS {
 				System.out.println("\tguid = " + guid); // DEBUG
 
 				// Update MetaData
-				file.addPage(guid, page_size); // metadata
+				file.addPage(guid, page_size, page.getFirstLetter()); // metadata
 
 				// Save page at its corresponding node
-				writePageData(catalogpage, guid);
+				writePageData(page, guid);
 
 				// reset page
-				catalogpage = new CatalogPage();
+				page = new CatalogPage(); // metadata
 				page_size = 0; // metadata
 			}
-
-			// Save Last Page if its smaller than "songs_per_page"
+			// Save Last Page if its smaller than "items_per_page"
 			else if (i == catalogItems.size() - 1) {
 				// DEBUG
-				System.out.println("\tLast Page: smaller than " + songs_per_page); // DEBUG
+				System.out.println("\n\tLast Page: smaller than " + this.items_per_page); // DEBUG
 				System.out.println("\tpage_size = " + page_size); // DEBUG
 				// System.out.println("i + 1 = " + (i+1) ); // DEBUG
 
@@ -448,16 +673,17 @@ public class DFS {
 				System.out.println("\tguid = " + guid); // DEBUG
 
 				// Update MetaData
-				file.addPage(guid, page_size); // metadata
+				file.addPage(guid, page_size, page.getFirstLetter()); // metadata
 
 				// Save page at its corresponding node
-				writePageData(catalogpage, guid);
+				writePageData(page, guid);
 
 				// reset page
-				catalogpage = new CatalogPage();
-				page_size = 0;
+				page = new CatalogPage();
+				page_size = 0; // metadata
 			}
 		}
+		// All items have been saved to a page
 
 		// Save metadata.json to Chord
 		file.setName(fileName);
@@ -467,42 +693,16 @@ public class DFS {
 	}
 
 	/**
-	 * Load the catalog
-	 * @param fileName name of file to be loaded
-	 */
-	public void loadCatalog(String fileName) {
-
-		// DEBUG
-		String TAG = "loadCatalog";
-		System.out.println(TAG + "(" + fileName + ")");
-
-		// Try to open the file for reading
-		try {
-
-			// JSON
-			JsonReader jsonReader = new JsonReader(new FileReader(fileName));
-
-			// GSON
-			Gson gson = new Gson();
-
-			jsonReader.beginArray();
-
-			while (jsonReader.hasNext()) {
-				CatalogItem item = gson.fromJson(jsonReader, CatalogItem.class);
-				catalogItems.add(item);
-			}
-			jsonReader.close();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
-
-	/**
-	 * Delte file
-	 * @param fileName name of file to delete
-	 * @throws Exception
+	 * delete file
+	 *
+	 * @param filename Name of the file
 	 */
 	public void delete(String fileName) throws Exception {
+		// TODO:
+		// Read metadata
+		// find filename in metadata
+		// for each page of file
+		// delete page
 
 		String TAG = "delete";
 
@@ -513,7 +713,7 @@ public class DFS {
 		for (int i = 0; i < metadata.size(); i++) {
 			if (metadata.getFile(i).getName().equals(fileName)) {
 				file = metadata.getFile(i);
-				System.out.println(TAG + ": file size: " + file.getSize()); // DEBUG
+				// System.out.println(TAG+": file size: " + file.getSize()); // DEBUG
 				System.out.println(TAG + ": numberOfPages: " + file.getNumberOfPages()); // DEBUG
 
 				// delete all pages of file
@@ -526,6 +726,8 @@ public class DFS {
 					peer.delete(guid);
 				}
 
+				// Update metadata
+				// TODO
 				metadata.deleteFile(fileName);
 				System.out.println("delete done."); // DEBUG
 				writeMetaData(metadata);
@@ -542,7 +744,15 @@ public class DFS {
 	 * @param pageNumber number of block.
 	 */
 	public RemoteInputFileStream read(String fileName, int pageNumber) throws Exception {
-		
+		// TODO:
+
+		// DONE:
+		// Read metadata
+		// find filename in metadata
+		// find guid of pageNumber in metadata
+		// request page
+		// TEST different pageNumbers
+
 		// Debug
 		String TAG = "read";
 		// System.out.println(TAG + "(fileName, pageNumber)");
@@ -553,7 +763,6 @@ public class DFS {
 		long guid = (long) 0;
 
 		// Find File in metadata
-		// for(FileJson filejson : metadata)
 		for (int i = 0; i < metadata.size(); i++) {
 			FileJson filejson = metadata.getFile(i);
 			// System.out.println("\tfilejson.getName: " + filejson.getName()); // DEBUG
@@ -572,14 +781,95 @@ public class DFS {
 		return peer.get(guid);
 	}
 
-	/**
-	 * Search for a song in the pages
-	 * @param filter filter to be applied
-	 * @param count number of max results to return
-	 * @return
-	 */
+	// TODO timing
+	public JsonObject indexSearch(String filter, int count) throws Exception {
+
+		String TAG = "indexSearch";
+		System.out.println(TAG + "(" + filter + ", " + count + ")"); // DEBUG
+
+		// return variable
+		JsonArray ret = new JsonArray();
+
+		// get key out of filter // assuming one word for now // for multiple word
+		// filter: split filter then do multiple searches
+		String key = "?";
+		if (filter.length() > 2) {
+			key = filter.substring(0, 2);// get first 2 characters only
+		}
+
+		// re-generate guid from key
+		Long guid = md5(key + "reverseIndex" + key);
+		ChordMessageInterface peer = chord.locateSuccessor(guid);
+
+		CatalogPage catalogPage = new CatalogPage();
+		try {
+			// Remote Input File Stream
+			RemoteInputFileStream dataraw = peer.get(guid);// index = page number
+
+			System.out.println("\t" + TAG + ":connecting."); // DEBUG
+			dataraw.connect();// new RFIS
+
+			// Scanner
+			System.out.println("\t" + TAG + ":scanning."); // DEBUG
+			Scanner scan = new Scanner(dataraw);
+			scan.useDelimiter("\\A");
+			String data = scan.next();
+			// System.out.println(data); // DEBUG
+
+			// Convert from json to ArrayList
+			System.out.println("\t" + TAG + ":converting json to CatalogPage.");// DEBUG
+			Gson gson = new Gson();
+			catalogPage = gson.fromJson(data, CatalogPage.class);
+
+			// System.out.println("\t" + TAG + ":Read Complete.");
+			// System.out.println("\t page.size(): " + page.size());
+			// return page;
+		} catch (Exception e) {
+			System.out.println(":error in indexSearch: ");
+		}
+
+		// search each item in the catalogPage
+		System.out.println(TAG + ": searching page..."); // DEBUG
+		int songs_found = 0; // Count number of songs found
+		for (int j = 0; j < catalogPage.size(); j++) {
+			// if item passes filter
+			// if(ci.passesFilter(filter))
+			if (catalogPage.getItem(j).passesFilter(filter)) {
+				// add to response
+				// ret.add(ci.getJson());
+				ret.add(catalogPage.getItem(j).getJson());
+
+				songs_found = songs_found + 1;
+				// System.out.println("\t\tsearch page: " + index); // DEBUG
+				System.out.println("\t\tfound so far: " + songs_found); // DEBUG
+
+				if (songs_found >= count) {
+					// DEBUG
+					System.out.println("max matches found.");
+					System.out.println("\tmatches found: " + songs_found);
+					JsonObject response = new JsonObject();
+					response.add("ret", ret);
+					return response;
+				}
+			}
+
+		}
+
+		// return json array;
+		System.out.println("\tmatches found: " + songs_found);
+		JsonObject response = new JsonObject();
+		response.add("ret", ret);
+		return response;
+
+	}
+
 	public JsonObject search(String filter, int count) {
 		String TAG = "search"; // DEBUG
+		Long startTime = (long) 0; // DEBUG
+		Long endTime = (long) 0; // DEBUG
+		Long runTime = (long) 0; // DEBUG
+		ArrayList<Long> getCatalogTimes = new ArrayList<Long>(); // DEBUG
+		ArrayList<Long> searchTimes = new ArrayList<Long>(); // DEBUG
 
 		// return variable
 		JsonArray ret = new JsonArray();
@@ -590,33 +880,83 @@ public class DFS {
 			System.out.println(TAG + ": read metadata"); // DEBUG
 			FilesJson files = readMetaData();
 
-			System.out.println(TAG + ": Use first file in metadata"); // DEBUG
-			FileJson file = files.getFile(0);
+			// Find music.json in metadata
+			System.out.println(TAG + ": Find music.json in metadata"); // DEBUG
+			FileJson file = files.getFile(0);// I know this is not good, I'm assuming that only music.json exists in
+												// files.
 			System.out.println(TAG + ": file.getNumberOfPages(): " + file.getNumberOfPages()); // DEBUG
 
-			// Find count number of songs
+			// Count number of songs
 			int songs_found = 0;
 
-			// search page by page in file
+			// search page by page in music.json
 			System.out.println(TAG + ": searching pages..."); // DEBUG
 			for (int index = 0; index < file.getNumberOfPages(); index++) {
-				System.out.println("\tpage: " + index); // DEBUG
+				System.out.print("\tpage: " + index + " "); // DEBUG
 
 				// request page
-				CatalogPage catalogpage = getCatalogPage(file.name, index);// TODO: replace with direct reference
+				startTime = System.currentTimeMillis(); // DEBUG
+				CatalogPage catalogPage = new CatalogPage();
+	
+				try {
+					// Remote Input File Stream
+					RemoteInputFileStream dataraw = this.read(file.name, index);// index = page number
+					// System.out.println("\t"+ TAG+":connecting."); // DEBUG
+					dataraw.connect();// new RFIS
 
-				// search each item in the catalogpage
-				for (int j = 0; j < catalogpage.size(); j++) {
-					CatalogItem ci = catalogpage.getItem(j);// TODO: replace by direct reference?
+					// Scanner
+					// System.out.println("\t" + TAG+":scanning."); // DEBUG
+					Scanner scan = new Scanner(dataraw);
+					scan.useDelimiter("\\A");
+					String data = scan.next();
+					// System.out.println(data); // DEBUG
+
+					// Convert from json to ArrayList
+					// System.out.println("\t" + TAG + ":converting json to CatalogPage.");
+					Gson gson = new Gson();
+					catalogPage = gson.fromJson(data, CatalogPage.class);
+
+					// System.out.println("\t" + TAG + ":Read Complete.");
+					// System.out.println("\t page.size(): " + page.size());
+					// return page;
+				} catch (Exception e) {
+					System.out.println(TAG + ": error reading page: " + index);
+					index = index - 1;
+					this.sleepTime = 450;
+				}
+				endTime = System.currentTimeMillis(); // DEBUG
+				runTime = endTime - startTime;
+				getCatalogTimes.add(runTime);
+				System.out.print(",\tread:" + runTime + "(milisec)"); // DEBUG //readTime
+				if (this.sleepTime > 300) {
+
+					this.sleepTime = this.sleepTime - 10;
+				}
+
+				// search each item in the catalogPage
+				startTime = System.currentTimeMillis(); // DEBUG
+				for (int j = 0; j < catalogPage.size(); j++) {
+					// CatalogItem ci = catalogPage.getItem(j);//TODO: replace by direct reference?
 
 					// if item passes filter
-					if (ci.passesFilter(filter)) {
+					// if(ci.passesFilter(filter))
+					if (catalogPage.getItem(j).passesFilter(filter)) {
 						// add to response
-						ret.add(ci.getJson());
+						// ret.add(ci.getJson());
+						ret.add(catalogPage.getItem(j).getJson());
 
 						songs_found = songs_found + 1;
+						// System.out.println("\t\tsearch page: " + index); // DEBUG
+						System.out.println("\t\tfound so far: " + songs_found); // DEBUG
 
 						if (songs_found >= count) {
+							// DEBUG
+							Long sum = (long) 0;
+							for (int i = 0; i < getCatalogTimes.size(); i++) {
+								sum = sum + getCatalogTimes.get(i);
+							}
+							Long average = sum / (long) getCatalogTimes.size();
+							System.out.println("Average page request: " + average);
 							System.out.println("max matches found.");
 							System.out.println("\tmatches found: " + songs_found);
 							JsonObject response = new JsonObject();
@@ -626,9 +966,28 @@ public class DFS {
 					}
 
 				}
+				endTime = System.currentTimeMillis(); // DEBUG
+				runTime = endTime - startTime;
+				searchTimes.add(runTime);
+				System.out.println(",\t" + runTime + "(milisec)"); // DEBUG // Search time
 			}
 			// searched all pages.
 			// return json array;
+			// DEBUG
+			Long sum = (long) 0;
+			for (int i = 0; i < getCatalogTimes.size(); i++) {
+				sum = sum + getCatalogTimes.get(i);
+			}
+			Long searchSum = (long) 0;
+			for (int i = 0; i < searchTimes.size(); i++) {
+				searchSum = searchSum + searchTimes.get(i);
+			}
+
+			Long average = sum / (long) getCatalogTimes.size();
+			Long searchAverage = sum / (long) getCatalogTimes.size();
+			System.out.println("Average page request: " + average);
+			System.out.println("Average page search: " + searchAverage);
+
 			System.out.println("Searched all pages");
 			System.out.println("\tmatches found: " + songs_found);
 			JsonObject response = new JsonObject();
@@ -650,45 +1009,6 @@ public class DFS {
 			response.add("ret", ret);
 			return response;
 		}
-	}
-
-	/**
-	 * Get a catalog page from a file
-	 * @param filename name of the file the page is in
-	 * @param pageNumber number of the page
-	 * @return specific page
-	 */
-	public CatalogPage getCatalogPage(String filename, int pageNumber) {
-		String TAG = "getCatalogPage";
-		// System.out.println(TAG + "(pageNumber)" ); // DEBUG
-		// System.out.println(TAG + "("+ pageNumber + ")" ); // DEBUG
-
-		try {
-			// Remote Input File Stream
-			RemoteInputFileStream dataraw = this.read(filename, pageNumber);
-			// System.out.println("\t"+ TAG+":connecting."); // DEBUG
-			dataraw.connect();
-
-			// Scanner
-			// System.out.println("\t" + TAG+":scanning."); // DEBUG
-			Scanner scan = new Scanner(dataraw);
-			scan.useDelimiter("\\A");
-			String data = scan.next();
-			// System.out.println(data); // DEBUG
-
-			// Convert from json to ArrayList
-			// System.out.println("\t" + TAG + ":converting json to CatalogPage.");
-			CatalogPage page = new CatalogPage();
-			Gson gson = new Gson();
-			page = gson.fromJson(data, CatalogPage.class);
-
-			// System.out.println("\t" + TAG + ":Read Complete.");
-			// System.out.println("\t page.size(): " + page.size());
-			return page;
-		} catch (Exception e) {
-			return new CatalogPage();
-		}
-
 	}
 
 	/**
@@ -719,5 +1039,113 @@ public class DFS {
 		// save data to peer
 		peer.put(guid, data); // send page
 
+	}
+
+	public void generateKeyGuid(String word) {
+		System.out.println("word: " + word); // DEBUG
+
+		String key = word.substring(0, 2);
+		System.out.println("key: " + key); // DEBUG
+
+		Long guid = md5(key + "reverseIndex" + key);
+		System.out.println("guid: " + guid); // DEBUG
+	}
+
+	// WIP: Work In Progress
+	// Precondition: create(music.json) was called before.
+	// All unsorted pages have been saved to the peers in the chord.
+	public void runMapReduce(String fileName) throws Exception {
+		String TAG = "runMapReduce()";
+		// -----Outline-----
+		// read music.json metadata
+
+		// All peers map:
+		// for each page in music.json
+		// peer = locateSuccessor(page.guid)
+		// peer.map(guid)
+
+		// wait until all pages are mapped
+
+		// All peers sendAll()
+
+		// wait until all keys are stored at their proper peer.
+
+		// All peers bulk() //Save all nodes in TreeMap as their own file).
+
+		// -----Implementation-----
+		// read music.json metadata
+		FileJson file = new FileJson();
+		try {
+
+			FilesJson files = readMetaData();
+
+			// Find music.json in metadata
+			System.out.println(TAG + ": Find music.json in metadata"); // DEBUG
+			file = files.getFile(0);// I know this is not good, I'm assuming that only music.json exists in files.
+			System.out.println(TAG + ": file.getNumberOfPages(): " + file.getNumberOfPages()); // DEBUG
+
+		} catch (Exception e) {
+			System.out.println(TAG + ": error reading metadata");
+		}
+
+		// for each page in music.json
+		// get guid
+		// locateSuccessor(page.guid)
+		// map(guid)
+		System.out.println(TAG + ": mapping pages..."); // DEBUG
+		for (int index = 0; index < file.getNumberOfPages(); index++) {
+			// get guid
+			Long guid = file.getPage(index).getGUID();
+
+			try {
+
+				// locate successor
+				ChordMessageInterface peer = chord.locateSuccessor(guid);
+
+				// map(guid)
+				peer.map(fileName, guid);
+
+			} catch (Exception e) {
+				System.out.println("Error: runMapReduce: trying to locateSuccessor() failed");
+			}
+
+		}
+
+		// wait until all pages are mapped
+		// Currently Debugging
+
+		// WIP: Work In Progress
+
+		/**
+		 * 
+		 * //All peers sendAll() System.out.println("Calling Peers to sendAll()");
+		 * chord.callSuccesorToSendAll(chord.getId(), 0);
+		 * 
+		 * //wait until all keys are stored at their proper peer.
+		 * System.out.println("waiting on peers to finish sending."); done = false;
+		 * while(!done) { Thread.sleep(2000); // Sleep to prevent sending too many
+		 * messages while checking the chord state
+		 * 
+		 * try { Long id =chord.getId(); chord.arePagesMapped(id,"music.json", true, 0
+		 * ); Thread.sleep(500); // Sleep to prevent sending too many messages while
+		 * checking the chord state done = chord.mappedState; } catch(Exception e) {
+		 * System.out.println("Error: arePagesMapped: chord.getId(): "); } }
+		 * 
+		 * 
+		 * //All peers bulk() //Save all nodes in TreeMap as their own file).
+		 * System.out.println("Calling Peers to bulk()");
+		 * 
+		 * 
+		 * //Done System.out.println("runMapReduce: done");
+		 * 
+		 **/
+	}
+
+	public void setChordState() {
+		chord.mappedState = true;
+	}
+
+	public void resetChordState() {
+		chord.mappedState = false;
 	}
 }

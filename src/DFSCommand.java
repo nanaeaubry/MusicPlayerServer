@@ -13,6 +13,17 @@ public class DFSCommand {
 	Boolean running = true;
 	String TAG = "DFSCommand";
 
+	static public void main(String args[]) throws Exception {
+		if (args.length < 1) {
+			throw new IllegalArgumentException("Parameter: <port> <portToJoin>");
+		}
+		if (args.length > 1) {
+			DFSCommand dfsCommand = new DFSCommand(Integer.parseInt(args[0]), Integer.parseInt(args[1]));
+		} else {
+			DFSCommand dfsCommand = new DFSCommand(Integer.parseInt(args[0]), 0);
+		}
+	}
+
 	public DFSCommand(int p, int portToJoin) throws Exception {
 		dfs = new DFS(p);
 		Server server = null;
@@ -55,16 +66,5 @@ public class DFSCommand {
 		
 		System.out.println("Bye Bye");
 	
-	}
-
-	static public void main(String args[]) throws Exception {
-		if (args.length < 1) {
-			throw new IllegalArgumentException("Parameter: <port> <portToJoin>");
-		}
-		if (args.length > 1) {
-			DFSCommand dfsCommand = new DFSCommand(Integer.parseInt(args[0]), Integer.parseInt(args[1]));
-		} else {
-			DFSCommand dfsCommand = new DFSCommand(Integer.parseInt(args[0]), 0);
-		}
 	}
 }

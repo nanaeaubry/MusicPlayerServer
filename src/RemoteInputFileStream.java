@@ -4,7 +4,7 @@
 * The client must call connect() before reading
 *
 * @author  Oscar Morales-Ponce
-* @version 0.15
+* @version 0.16
 * @since   03-3-2019
 */
 
@@ -16,7 +16,6 @@ import java.util.concurrent.Semaphore;
 
 public class RemoteInputFileStream extends InputStream implements Serializable {
 
-    private String TAG = "RemoteInputFileStream";
     public InetAddress IP;
     public int port;
     public int total;

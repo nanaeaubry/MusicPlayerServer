@@ -27,6 +27,7 @@ public class CatalogService {
 
 		try {
 			dfs.create(ASSETS_MUSIC_JSON);
+			dfs.runMapReduce(ASSETS_MUSIC_JSON);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}

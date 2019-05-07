@@ -71,4 +71,18 @@ public class CatalogItem {
 		song.addProperty("artist", this.artist.name);
 		return song;
 	}
+	
+
+    public String getTitle()
+    {
+    	return this.song.title;
+    }
+    public String getAlbum()
+    {
+    	return this.release.name;
+    }
+    public String getArtist()
+    {
+    	return this.artist.name;
+    } 
 }
