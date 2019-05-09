@@ -280,17 +280,7 @@ public class DFS {
 
 	// Maps the file to a treemap
 	public void map(String fileName) {
-		// fileName = music.json
 
-		// 1 Get music.json metadata
-
-		// 2 for each page in file "music.json"
-
-		// get page guid
-
-		// locate peer
-
-		// peer.map(guid)
 	}
 
 	// tell every peer to emit their tree
